@@ -1,0 +1,223 @@
+﻿<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <style>
+      textarea {
+        width: 100%;
+        font-size: 7px;
+      }
+    </style>
+    <canvas class="interpCanvas">matrix 150x150</canvas>
+    <textarea></textarea>
+    <script>
+        var matrix = [[90,-10,120],[50,1,10],[190,90,-10]],
+        arrRanges = [], arrColor = [], Points = [],
+        matrixColors = [],
+        interpCanvas = document.querySelector(".interpCanvas");
+      arrRanges = getMatrixRanges(matrix, 250);
+      arrColor = getColorRanges(250);
+      interpolate(matrix, 100);
+      document.querySelector(".interpCanvas").addEventListener("click", takeSection, false);
+      function getPoints (point) {
+        if (Points.length < 2) {
+          Points.push(point);
+        }
+      }
+      function takeLengthOfWay (e, points) {
+        var h1 = matrixColors[points[0].x][points[0].y],
+            h2 = matrixColors[points[1].x][points[1].y],
+            h = h2 - h1;
+            length = Math.sqrt(Math.pow((points[1].x - points[0].x),2) + Math.pow((points[1].y - points[0].y),2));
+            trueLength = Math.pow(length, 2) + Math.pow(h, 2),
+          console.log(trueLength);
+          console.log(length);
+      }
+      function takePoint (e) {
+        point = { x: e.layerX,
+                  y: e.layerY
+                };
+        console.log(point);
+        return point;
+      }
+      function takeSection (e) {
+        var ctx = e.target.getContext("2d");
+        getPoints(takePoint(e));
+        ctx.fillStyle = "rgb(255,0,0);";
+        ctx.fillRect(point.x, point.y, 1, 1);
+        if (Points.length > 1) {
+          takeLengthOfWay(e, Points);
+        }
+      }
+      function getArrayMinMax (matrix) {
+        var max = -100, min = 100;
+        for (i = 0; i < matrix.length; i ++) {
+          for (j = 0; j < matrix.length; j ++) {
+              if (max < matrix[i][j]) {
+                max = matrix[i][j];
+              }
+              if (min > matrix[i][j]) {
+                min = matrix[i][j];
+              }
+          }
+        }
+        return {
+          min: min,
+          max: max
+        }
+      }
+      function setOutlines (interpMatrix, percent) {
+        var rangeMatrix = [], i, j, k, minMaxObj, step = 0;
+        for (i = 0; i < interpMatrix.length - 1; i ++) {
+          rangeMatrix[i] = [];
+          for (j = 0; j < interpMatrix.length - 1; j ++) {
+            for (k = 0; k < arrRanges.length; k ++) {
+              if (interpMatrix[i][j] >= arrRanges[k] && interpMatrix[i][j] <= arrRanges[k + 1]) {
+                rangeMatrix[i][j] = k;
+              }
+            }
+          }
+        }
+        minMaxObj = getArrayMinMax(interpMatrix);
+        step = percent = Math.ceil((minMaxObj.max - minMaxObj.min) * percent);
+        for (i = 0; i < interpMatrix.length - 1; i ++) {
+          for (j = 0; j < interpMatrix.length - 1; j ++) {
+            if (Math.ceil(interpMatrix[i][j]) === percent) {
+              arrColor[rangeMatrix[i][j]] = [0,150,0]; 
+              percent += step;
+            }
+          }
+        }
+      }
+      function getMatrixColors(interpMatrix, arrRanges, arrColor) {
+        var colorsMatrix = [], i, j, k;
+        for (i = 0; i < interpMatrix.length - 1; i ++) {
+          colorsMatrix[i] = [];
+          for (j = 0; j < interpMatrix.length - 1; j ++) {
+            for (k = 0; k < arrRanges.length; k ++) {
+              if (interpMatrix[i][j] >= arrRanges[k] && interpMatrix[i][j] <= arrRanges[k + 1]) {
+                colorsMatrix[i][j] = arrColor[k];
+              }
+            }
+          }
+        }
+        return colorsMatrix;
+      }
+      function getColorRanges (step) {
+        var k = 0, stepColorChanging = (250 - 0) / step;
+        arrColor[0] = [0, 0, 0];
+        while (k < step) {
+          arrColor[++k] = [arrColor[k - 1][0] + stepColorChanging, arrColor[k - 1][1] + stepColorChanging, arrColor[k - 1][2] + stepColorChanging]; 
+        }
+        return arrColor;        
+      }
+      function getMatrixRanges(matrix, step) {
+        var minMaxObj, gap, i, j, k = 0;
+        minMaxObj = getArrayMinMax(matrix);
+        gap = (minMaxObj.max - minMaxObj.min) / step;
+        arrRanges[0] = minMaxObj.min;
+        arrColor[0] = [0, 0, 0];
+        while (arrRanges[k] < minMaxObj.max && k < step) {
+          arrRanges[++k] = arrRanges[k - 1] + gap;
+        }
+        return arrRanges;
+      }
+      function drawInterpolateMatrix (canvasObject, outBuf, arrRanges, arrColor, outlinePercent) {
+        var ctx = canvasObject.getContext("2d");
+        if (outlinePercent !== 0) {
+          setOutlines(outBuf, outlinePercent);
+        }
+        matrixColors = getMatrixColors(outBuf, arrRanges, arrColor);
+        canvasObject.width = canvasObject.height = matrixColors.length;
+        for (i = 0; i < matrixColors.length; i ++) {
+          for (j = 0; j < matrixColors.length; j ++) {
+             ctx.fillStyle = "rgb(" + (matrixColors[i][j][0].toFixed(0))+","+(matrixColors[i][j][1].toFixed(0))+","+(matrixColors[i][j][2].toFixed(0)) + ")";
+
+            console.log("rgb(" + (matrixColors[i][j][0].toFixed(0))+","+(matrixColors[i][j][1].toFixed(0))+","+(matrixColors[i][j][2].toFixed(0)) + ");");
+            ctx.fillRect(i * 1, j * 1, 1, 1);
+          }
+        }
+        return matrixColors;
+      }
+      function consoleMatrix(matr) {
+        var str = "", inBuf = [], k = 0, height = 20;
+        for (i = 0; i < matr.length; i ++) {
+          for (j = 0; j < matr.length; j ++) {
+            str += Number(matr[i][j]).toFixed(3) + " : ";
+            inBuf[k++] = matr[i][j];
+          }
+          document.querySelector("textarea").value += (str + "\n\n\n\n");
+          document.querySelector("textarea").style.height = height * j + "px";
+          str = "";
+        }
+        return inBuf;
+      }
+      function getInnerArray (innerMatrix) {
+        var inArray = [], k = 0;
+        for (i = 0; i < innerMatrix.length; i ++) {
+          for (j = 0; j < innerMatrix.length; j ++) {
+            inArray[k++] = innerMatrix[i][j];
+          }
+        }
+        return inArray;
+      }
+      // function getInterpolateRanges(outBuf, arrRanges) {
+      //   for (i = 0; i < outBuf.length; i ++) {
+      //     for (j = 0; j < outBuf[i].length; j ++) {
+      //       inArray[k++] = innerMatrix[i][j];
+      //     }
+      //   }
+      // }
+      function interpolate (matrix, zoom) {
+        var inBuf = getInnerArray(matrix),
+            div_height, 
+            div_width,
+            outBuf = [],
+            oldHeight = matrix.length,
+            oldWidth = matrix.length,
+            newHeight = oldHeight * zoom + (zoom.toFixed(0) - 1),
+            newWidth = oldWidth * zoom + (zoom.toFixed(0) - 1),
+            i, j, t, l, u, c, ind, d1, d2, d3, d4, p1 = p2 = p3 = p4 = [];
+        div_height = ( (oldHeight - 1) ) / (newHeight - 1);
+        div_width = ( (oldWidth - 1) ) / (newWidth - 1);
+        i_tmp = 0;
+        for ( i = 0; i < newHeight; ++i, i_tmp += div_height ) {
+            outBuf[i] = [];
+
+            j_tmp = 0;
+            l = parseInt(i_tmp);
+            if (l > oldHeight - 2) {
+                l = oldHeight - 2;
+            }
+            u = i_tmp - l;
+            l *= oldWidth;
+            for ( j = 0; j < newWidth; ++j, j_tmp += div_width ) {
+     
+                c = parseInt(j_tmp);
+                if (c > oldWidth - 2) {
+                    c = oldWidth - 2;
+                }
+                t = j_tmp - c;
+     
+                d1 = (1 - t) * (1 - u);
+                d2 = t * (1 - u);
+                d3 = t * u;
+                d4 = (1 - t) * u;
+     
+                ind = l + c; 
+                p1 = inBuf[ ind ];
+                p2 = inBuf[ ind + 1 ];
+                p3 = inBuf[ ind + oldWidth + 1 ];
+                p4 = inBuf[ ind + oldWidth];
+                outBuf[i][j] = (p1 * d1 + p2 * d2 + p3 * d3 + p4 * d4);
+            }
+         }      
+         consoleMatrix(outBuf);
+         // matrixRanges = getInterpolateRanges(outBuf, arrRanges);
+         matrixColors = drawInterpolateMatrix(interpCanvas, outBuf, arrRanges, arrColor, 0.15);
+      }    
+ </script>
+  </body>
+</html>
